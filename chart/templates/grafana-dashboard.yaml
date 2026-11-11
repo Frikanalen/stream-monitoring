@@ -1,0 +1,216 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "stream-monitoring.name" . }}-grafana-dashboard
+  labels:
+    {{- include "stream-monitoring.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  frikanalen-stream.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "mappings": [
+                {"options": {"0": {"color": "red", "text": "DOWN"}, "1": {"color": "green", "text": "UP"}}, "type": "value"}
+              ],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "pluginVersion": "13.0.0",
+          "targets": [{"expr": "min(up{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "title": "Monitoring",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "mappings": [{"options": {"0": {"color": "red", "text": "DISCONNECTED"}, "1": {"color": "green", "text": "CONNECTED"}}, "type": "value"}],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "pluginVersion": "13.0.0",
+          "targets": [{"expr": "max(ffmpeg_stream_connection_state{service=\"stream-monitoring\",stream_type=\"mpegts\"})", "instant": true, "refId": "A"}],
+          "title": "Stream Connection",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "mappings": [{"options": {"0": {"color": "green", "text": "AUDIO OK"}, "1": {"color": "red", "text": "SILENT"}}, "type": "value"}],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "pluginVersion": "13.0.0",
+          "targets": [{"expr": "max(frikanalen_stream_silence{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "title": "Audio Content",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "mappings": [{"options": {"0": {"color": "green", "text": "MOTION OK"}, "1": {"color": "red", "text": "FROZEN"}}, "type": "value"}],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "pluginVersion": "13.0.0",
+          "targets": [{"expr": "max(frikanalen_stream_frozen{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "title": "Video Content",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 30}]}, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
+          "id": 5,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "pluginVersion": "13.0.0",
+          "targets": [{"expr": "max(frikanalen_stream_silence_duration_seconds{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "title": "Current Silence",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 30}]}, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
+          "id": 6,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "pluginVersion": "13.0.0",
+          "targets": [{"expr": "max(frikanalen_stream_freeze_duration_seconds{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "title": "Current Freeze",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 12, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "min": 0, "unit": "fps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+          "id": 7,
+          "options": {"legend": {"calcs": ["lastNotNull", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "pluginVersion": "13.0.0",
+          "targets": [
+            {"expr": "sum(rate(ffmpeg_frames{service=\"stream-monitoring\",type=\"processed\",media_type=\"video\"}[1m]))", "legendFormat": "Video frames/s", "refId": "A"},
+            {"expr": "sum(rate(ffmpeg_frames{service=\"stream-monitoring\",type=\"processed\",media_type=\"audio\"}[1m]))", "legendFormat": "Audio frames/s", "refId": "B"},
+            {"expr": "max(ffmpeg_fps{service=\"stream-monitoring\",media_type=\"video\"})", "legendFormat": "Reported video FPS", "refId": "C"}
+          ],
+          "title": "Decoded Media Progress",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "min": 0, "unit": "ops"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "pluginVersion": "13.0.0",
+          "targets": [
+            {"expr": "sum(rate(ffmpeg_codec_errors_total{service=\"stream-monitoring\"}[5m]))", "legendFormat": "Codec errors/s", "refId": "A"},
+            {"expr": "sum(rate(ffmpeg_packet_corrupt_total{service=\"stream-monitoring\"}[5m]))", "legendFormat": "Corrupt packets/s", "refId": "B"},
+            {"expr": "sum(rate(ffmpeg_stream_connection_reset_total{service=\"stream-monitoring\"}[5m]))", "legendFormat": "Reconnects/s", "refId": "C"}
+          ],
+          "title": "Media Errors and Reconnects",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "min": 0, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 13},
+          "id": 9,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "pluginVersion": "13.0.0",
+          "targets": [
+            {"expr": "max(frikanalen_stream_silence_duration_seconds{service=\"stream-monitoring\"})", "legendFormat": "Silence duration", "refId": "A"},
+            {"expr": "max(frikanalen_stream_freeze_duration_seconds{service=\"stream-monitoring\"})", "legendFormat": "Freeze duration", "refId": "B"}
+          ],
+          "title": "Content Anomaly Duration",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 12, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "min": 0}, "overrides": [{"matcher": {"id": "byName", "options": "CPU cores"}, "properties": [{"id": "unit", "value": "short"}]}, {"matcher": {"id": "byName", "options": "Memory"}, "properties": [{"id": "unit", "value": "bytes"}]}]},
+          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 13},
+          "id": 10,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "pluginVersion": "13.0.0",
+          "targets": [
+            {"expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"monitoring\",pod=~\"stream-monitoring-.*\",container!=\"\"}[5m]))", "legendFormat": "CPU cores", "refId": "A"},
+            {"expr": "sum(container_memory_working_set_bytes{namespace=\"monitoring\",pod=~\"stream-monitoring-.*\",container!=\"\"})", "legendFormat": "Memory", "refId": "B"}
+          ],
+          "title": "Monitor Resource Usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [{"options": {"0": {"color": "green", "text": "OK"}, "1": {"color": "red", "text": "FIRING"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 6, "w": 24, "x": 0, "y": 20},
+          "id": 11,
+          "options": {"displayMode": "gradient", "maxVizHeight": 300, "minVizHeight": 16, "minVizWidth": 8, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
+          "pluginVersion": "13.0.0",
+          "targets": [{"expr": "max by (alertname) (ALERTS{alertname=~\"FrikanalenStream.*\",alertstate=\"firing\"}) or on() vector(0)", "legendFormat": "Active Frikanalen alerts", "refId": "A"}],
+          "title": "Alert State",
+          "type": "bargauge"
+        }
+      ],
+      "refresh": "15s",
+      "schemaVersion": 39,
+      "tags": ["frikanalen", "stream", "broadcast"],
+      "templating": {
+        "list": [
+          {
+            "current": {"selected": false, "text": "default", "value": "default"},
+            "hide": 0,
+            "label": "Data source",
+            "name": "datasource",
+            "query": "prometheus",
+            "type": "datasource"
+          }
+        ]
+      },
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {"refresh_intervals": ["5s", "10s", "15s", "30s", "1m", "5m"]},
+      "timezone": "browser",
+      "title": "Frikanalen / Production Stream",
+      "uid": "frikanalen-production-stream",
+      "version": 1
+    }

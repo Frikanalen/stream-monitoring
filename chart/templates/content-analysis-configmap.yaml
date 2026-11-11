@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "stream-monitoring.name" . }}-content-analysis
+  labels:
+    {{- include "stream-monitoring.labels" . | nindent 4 }}
+data:
+  analyze.sh: |
+    #!/bin/sh
+    set -eu
+
+    state_dir=/tmp/state
+    web_dir=/tmp/www
+    mkdir -p "$state_dir" "$web_dir"
+
+    cleanup() {
+      trap - EXIT INT TERM
+      kill "${metrics_pid:-}" "${ffmpeg_pid:-}" 2>/dev/null || true
+      wait 2>/dev/null || true
+    }
+    trap cleanup EXIT INT TERM
+
+    write_metrics() {
+      while true; do
+        now=$(date +%s)
+        silence=0
+        silence_duration=0
+        freeze=0
+        freeze_duration=0
+        analysis_up=0
+
+        if [ -f "$state_dir/silence-start" ]; then
+          silence=1
+          silence_start=$(cat "$state_dir/silence-start")
+          silence_duration=$((now - silence_start))
+        fi
+        if [ -f "$state_dir/freeze-start" ]; then
+          freeze=1
+          freeze_start=$(cat "$state_dir/freeze-start")
+          freeze_duration=$((now - freeze_start))
+        fi
+        if [ -f "$state_dir/analysis-up" ]; then
+          analysis_up=1
+        fi
+
+        metrics_file="$web_dir/metrics.txt.tmp"
+        {
+          echo '# HELP frikanalen_content_analysis_up Whether the FFmpeg content analyzer is running.'
+          echo '# TYPE frikanalen_content_analysis_up gauge'
+          echo "frikanalen_content_analysis_up $analysis_up"
+          echo '# HELP frikanalen_stream_silence Whether continuous silence is currently detected.'
+          echo '# TYPE frikanalen_stream_silence gauge'
+          echo "frikanalen_stream_silence $silence"
+          echo '# HELP frikanalen_stream_silence_duration_seconds Current continuous silence duration.'
+          echo '# TYPE frikanalen_stream_silence_duration_seconds gauge'
+          echo "frikanalen_stream_silence_duration_seconds $silence_duration"
+          echo '# HELP frikanalen_stream_frozen Whether frozen video is currently detected.'
+          echo '# TYPE frikanalen_stream_frozen gauge'
+          echo "frikanalen_stream_frozen $freeze"
+          echo '# HELP frikanalen_stream_freeze_duration_seconds Current continuous frozen-video duration.'
+          echo '# TYPE frikanalen_stream_freeze_duration_seconds gauge'
+          echo "frikanalen_stream_freeze_duration_seconds $freeze_duration"
+        } > "$metrics_file"
+        # The .txt extension makes Python's static server send text/plain,
+        # which Prometheus 3 accepts without a fallback scrape protocol.
+        mv "$metrics_file" "$web_dir/metrics.txt"
+        sleep 1
+      done
+    }
+
+    write_metrics &
+    metrics_pid=$!
+
+    while true; do
+      rm -f "$state_dir/silence-start" "$state_dir/freeze-start"
+      touch "$state_dir/analysis-up"
+
+      ffmpeg -nostdin -hide_banner -loglevel info \
+        -i "$STREAM_URL" \
+        -filter_complex "[0:v:0]fps=2,scale=320:-2,freezedetect=n=$FREEZE_NOISE:d=$DETECTION_SECONDS[video];[0:a:0]silencedetect=n=$SILENCE_NOISE:d=$DETECTION_SECONDS[audio]" \
+        -map '[video]' -map '[audio]' -f null - 2>&1 | while IFS= read -r line; do
+          echo "$line"
+          case "$line" in
+            *lavfi.freezedetect.freeze_start:*)
+              echo $(($(date +%s) - DETECTION_SECONDS)) > "$state_dir/freeze-start"
+              ;;
+            *lavfi.freezedetect.freeze_end:*)
+              rm -f "$state_dir/freeze-start"
+              ;;
+            *silence_start:*)
+              echo $(($(date +%s) - DETECTION_SECONDS)) > "$state_dir/silence-start"
+              ;;
+            *silence_end:*)
+              rm -f "$state_dir/silence-start"
+              ;;
+          esac
+        done &
+      ffmpeg_pid=$!
+      wait "$ffmpeg_pid" || true
+
+      rm -f "$state_dir/analysis-up" "$state_dir/silence-start" "$state_dir/freeze-start"
+      sleep 10
+    done
+

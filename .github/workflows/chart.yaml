@@ -1,0 +1,19 @@
+name: chart
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+      - name: Lint chart
+        run: helm lint chart
+      - name: Render chart
+        run: helm template stream-monitoring chart > /dev/null

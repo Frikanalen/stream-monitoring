@@ -1,0 +1,79 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "stream-monitoring.name" . }}
+  labels:
+    {{- include "stream-monitoring.labels" . | nindent 4 }}
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: frikanalen-stream
+      rules:
+        - alert: FrikanalenStreamExporterDown
+          expr: up{service="stream-monitoring"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen stream monitor is unreachable
+            description: Prometheus has been unable to scrape the FFmpeg exporter for more than two minutes.
+
+        - alert: FrikanalenStreamDisconnected
+          expr: ffmpeg_stream_connection_state{service="stream-monitoring",stream_type="mpegts"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen MPEG-TS stream is disconnected
+            description: FFprobe has reported the production stream disconnected for more than one minute.
+
+        - alert: FrikanalenStreamVideoStalled
+          expr: sum(rate(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="video"}[2m])) < 1 or absent(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="video"})
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen video has stopped advancing
+            description: Fewer than one decoded video frame per second has been observed for more than two minutes.
+
+        - alert: FrikanalenStreamAudioStalled
+          expr: sum(rate(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="audio"}[2m])) < 1 or absent(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="audio"})
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen audio has stopped advancing
+            description: Fewer than one decoded audio frame per second has been observed for more than two minutes.
+
+        - alert: FrikanalenStreamSilent
+          expr: frikanalen_stream_silence_duration_seconds{service="stream-monitoring"} >= {{ .Values.contentAnalysis.silenceAlertSeconds }}
+          # The expression already waits for the threshold, but short freezes and
+          # silences keep crossing it, so without a for: static graphics or a
+          # quiet programme flap and page every minute.
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen stream is silent
+            description: No audio above {{ .Values.contentAnalysis.silenceNoise }} has been detected for at least {{ .Values.contentAnalysis.silenceAlertSeconds }} seconds.
+
+        - alert: FrikanalenStreamFrozen
+          expr: frikanalen_stream_freeze_duration_seconds{service="stream-monitoring"} >= {{ .Values.contentAnalysis.freezeAlertSeconds }}
+          # The expression already waits for the threshold, but short freezes and
+          # silences keep crossing it, so without a for: static graphics or a
+          # quiet programme flap and page every minute.
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen video is frozen
+            description: No significant image motion above {{ .Values.contentAnalysis.freezeNoise }} has been detected for at least {{ .Values.contentAnalysis.freezeAlertSeconds }} seconds.
+
+        - alert: FrikanalenStreamCodecErrors
+          expr: sum(rate(ffmpeg_codec_errors_total{service="stream-monitoring"}[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Frikanalen stream has sustained codec errors
+            description: FFprobe has observed more than one codec error per second for five minutes.

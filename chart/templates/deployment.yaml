@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "stream-monitoring.name" . }}
+  labels:
+    {{- include "stream-monitoring.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "stream-monitoring.name" . }}
+  template:
+    metadata:
+      annotations:
+        checksum/content-analysis: {{ include (print $.Template.BasePath "/content-analysis-configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "stream-monitoring.labels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ffmpeg-exporter
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --input
+            - {{ .Values.stream.url | quote }}
+            - --metrics-port
+            - "9090"
+            - --probe-size
+            - {{ .Values.stream.probeSize | quote }}
+            - --analyze-duration
+            - {{ .Values.stream.analyzeDuration | quote }}
+          env:
+            - name: RUST_LOG
+              value: info
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+
+        - name: content-analysis
+          image: "{{ .Values.contentAnalysis.image.repository }}:{{ .Values.contentAnalysis.image.tag }}"
+          imagePullPolicy: {{ .Values.contentAnalysis.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - /scripts/analyze.sh
+          env:
+            - name: STREAM_URL
+              value: {{ .Values.stream.url | quote }}
+            - name: DETECTION_SECONDS
+              value: {{ .Values.contentAnalysis.detectionSeconds | quote }}
+            - name: SILENCE_NOISE
+              value: {{ .Values.contentAnalysis.silenceNoise | quote }}
+            - name: FREEZE_NOISE
+              value: {{ .Values.contentAnalysis.freezeNoise | quote }}
+          resources:
+            {{- toYaml .Values.contentAnalysis.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: content-analysis-script
+              mountPath: /scripts
+              readOnly: true
+            - name: content-analysis-tmp
+              mountPath: /tmp
+
+        - name: content-metrics
+          image: "{{ .Values.contentAnalysis.metricsImage.repository }}:{{ .Values.contentAnalysis.metricsImage.tag }}"
+          imagePullPolicy: {{ .Values.contentAnalysis.metricsImage.pullPolicy }}
+          command:
+            - python
+            - -m
+            - http.server
+            - "9091"
+            - --directory
+            - /tmp/www
+          ports:
+            - name: content-metrics
+              containerPort: 9091
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /metrics.txt
+              port: content-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics.txt
+              port: content-metrics
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: content-analysis-tmp
+              mountPath: /tmp
+      volumes:
+        - name: content-analysis-script
+          configMap:
+            name: {{ include "stream-monitoring.name" . }}-content-analysis
+            defaultMode: 0555
+        - name: content-analysis-tmp
+          emptyDir: {}
+

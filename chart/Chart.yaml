@@ -1,0 +1,7 @@
+apiVersion: v2
+name: stream-monitoring
+description: Continuous FFprobe-based monitoring for Frikanalen's production MPEG-TS stream
+type: application
+version: 0.1.0
+appVersion: "2.0.0"
+
