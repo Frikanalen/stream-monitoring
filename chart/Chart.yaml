@@ -1,7 +1,7 @@
 apiVersion: v2
 name: stream-monitoring
-description: Continuous FFprobe-based monitoring for Frikanalen's production MPEG-TS stream
+description: Monitoring for Frikanalen's outgoing MPEG-TS stream, its public HLS output and the live stream packager
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "2.0.0"
 

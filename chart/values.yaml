@@ -5,6 +5,11 @@ image:
   tag: latest@sha256:9b1ea2d12c49f3642b46394f8068586c7ca9b4c70ed4deace034498cab711d82
   pullPolicy: IfNotPresent
 
+# The outgoing MPEG-TS: structure (ffmpeg_exporter) and content (black,
+# frozen, silent). Off where there is no TS to watch, e.g. staging.
+tsMonitor:
+  enabled: true
+
 stream:
   url: http://simula.frikanalen.tv:9094/frikanalen.ts
   # Strings prevent YAML/Helm from rendering these CLI arguments in scientific notation.
@@ -43,3 +48,34 @@ resources:
     cpu: 1000m
     memory: 512Mi
 
+
+# Polls the public HLS output like a player would: master playlist, every
+# media playlist, a HEAD on each newest segment. Exports per rendition the
+# media sequence and where its newest segment ends by program date time, so
+# the rules below catch renditions that keep advancing but no longer line up
+# with each other or the clock (2026-11-13: staging audio ~16 minutes behind
+# video for ten hours, every freshness check passing).
+hlsProbe:
+  enabled: false
+  url: https://frikanalen.tv/stream/index.m3u8
+  intervalSeconds: 10
+  timeoutSeconds: 8
+  # Alert thresholds. A healthy origin's program date times sit a few
+  # seconds ahead of the clock.
+  maxSkewSeconds: 6
+  maxLagSeconds: 60
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 96Mi
+
+# Alerts on the packager's pods themselves: FFmpeg restarts, pods not ready,
+# CPU throttling. Needs kube-state-metrics and cAdvisor metrics, which
+# kube-prometheus-stack provides.
+packagerAlerts:
+  enabled: false
+  namespace: default
+  podRegex: stream-live-stream-packager-.*
