@@ -102,13 +102,17 @@ spec:
             description: For three minutes the master playlist, a media playlist or a newest segment at {{ .Values.hlsProbe.url }} has not answered 200.
 
         - alert: FrikanalenHlsStalled
-          expr: min(changes(frikanalen_hls_media_sequence{service="stream-monitoring"}[2m])) == 0 and max(frikanalen_hls_probe_success{service="stream-monitoring"}) == 1
+          # The newest segment's end, not EXT-X-MEDIA-SEQUENCE: the media
+          # sequence only moves once the playlist window is full and segments
+          # start dropping off, so for the first listSize segments after a
+          # packager restart (five minutes) it stands still on a healthy stream.
+          expr: min(changes(frikanalen_hls_end_timestamp_seconds{service="stream-monitoring"}[2m])) == 0 and max(frikanalen_hls_probe_success{service="stream-monitoring"}) == 1
           for: 1m
           labels:
             severity: critical
           annotations:
             summary: A Frikanalen HLS rendition has stopped advancing
-            description: At least one media playlist at {{ .Values.hlsProbe.url }} has kept the same media sequence for three minutes.
+            description: The newest segment of at least one media playlist at {{ .Values.hlsProbe.url }} has not changed for three minutes.
 
         - alert: FrikanalenHlsRenditionsOutOfSync
           expr: max(frikanalen_hls_rendition_skew_seconds{service="stream-monitoring"}) > {{ .Values.hlsProbe.maxSkewSeconds }}

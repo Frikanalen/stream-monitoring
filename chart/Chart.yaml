@@ -2,6 +2,6 @@ apiVersion: v2
 name: stream-monitoring
 description: Monitoring for Frikanalen's outgoing MPEG-TS stream, its public HLS output and the live stream packager
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: "2.0.0"
 
