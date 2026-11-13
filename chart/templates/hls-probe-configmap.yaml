@@ -1,0 +1,11 @@
+{{- if .Values.hlsProbe.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "stream-monitoring.name" . }}-hls-probe
+  labels:
+    {{- include "stream-monitoring.labels" . | nindent 4 }}
+data:
+  hls_probe.py: |
+    {{- .Files.Get "files/hls_probe.py" | nindent 4 }}
+{{- end }}

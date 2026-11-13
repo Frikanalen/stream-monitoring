@@ -13,6 +13,9 @@ spec:
     metadata:
       annotations:
         checksum/content-analysis: {{ include (print $.Template.BasePath "/content-analysis-configmap.yaml") . | sha256sum }}
+        {{- if .Values.hlsProbe.enabled }}
+        checksum/hls-probe: {{ include (print $.Template.BasePath "/hls-probe-configmap.yaml") . | sha256sum }}
+        {{- end }}
       labels:
         {{- include "stream-monitoring.labels" . | nindent 8 }}
     spec:
@@ -26,6 +29,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
+        {{- if .Values.tsMonitor.enabled }}
         - name: ffmpeg-exporter
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -138,7 +142,57 @@ spec:
           volumeMounts:
             - name: content-analysis-tmp
               mountPath: /tmp
+        {{- end }}
+        {{- if .Values.hlsProbe.enabled }}
+
+        - name: hls-probe
+          image: "{{ .Values.contentAnalysis.metricsImage.repository }}:{{ .Values.contentAnalysis.metricsImage.tag }}"
+          imagePullPolicy: {{ .Values.contentAnalysis.metricsImage.pullPolicy }}
+          command: ["python", "-B", "-u", "/scripts/hls_probe.py"]
+          env:
+            - name: HLS_URL
+              value: {{ .Values.hlsProbe.url | quote }}
+            - name: INTERVAL_SECONDS
+              value: {{ .Values.hlsProbe.intervalSeconds | quote }}
+            - name: TIMEOUT_SECONDS
+              value: {{ .Values.hlsProbe.timeoutSeconds | quote }}
+            - name: METRICS_PORT
+              value: "9092"
+          ports:
+            - name: hls-metrics
+              containerPort: 9092
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: hls-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: hls-metrics
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.hlsProbe.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: hls-probe-script
+              mountPath: /scripts
+              readOnly: true
+        {{- end }}
       volumes:
+        {{- if .Values.hlsProbe.enabled }}
+        - name: hls-probe-script
+          configMap:
+            name: {{ include "stream-monitoring.name" . }}-hls-probe
+        {{- end }}
         - name: content-analysis-script
           configMap:
             name: {{ include "stream-monitoring.name" . }}-content-analysis

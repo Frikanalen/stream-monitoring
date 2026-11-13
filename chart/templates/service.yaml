@@ -8,6 +8,7 @@ spec:
   selector:
     app.kubernetes.io/name: {{ include "stream-monitoring.name" . }}
   ports:
+    {{- if .Values.tsMonitor.enabled }}
     - name: metrics
       port: 9090
       targetPort: metrics
@@ -16,4 +17,10 @@ spec:
       port: 9091
       targetPort: content-metrics
       protocol: TCP
-
+    {{- end }}
+    {{- if .Values.hlsProbe.enabled }}
+    - name: hls-metrics
+      port: 9092
+      targetPort: hls-metrics
+      protocol: TCP
+    {{- end }}

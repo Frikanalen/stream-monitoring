@@ -7,6 +7,7 @@ metadata:
     release: kube-prometheus-stack
 spec:
   groups:
+    {{- if .Values.tsMonitor.enabled }}
     - name: frikanalen-stream
       rules:
         - alert: FrikanalenStreamExporterDown
@@ -77,3 +78,85 @@ spec:
           annotations:
             summary: Frikanalen stream has sustained codec errors
             description: FFprobe has observed more than one codec error per second for five minutes.
+    {{- end }}
+    {{- if .Values.hlsProbe.enabled }}
+
+    - name: frikanalen-hls
+      rules:
+        - alert: FrikanalenHlsProbeDown
+          expr: up{service="stream-monitoring",endpoint="hls-metrics"} == 0 or absent(frikanalen_hls_probe_timestamp_seconds{service="stream-monitoring"})
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Frikanalen HLS probe is not reporting
+            description: Prometheus has had no metrics from the HLS probe for five minutes, so the HLS alerts below cannot fire.
+
+        - alert: FrikanalenHlsUnavailable
+          expr: max(frikanalen_hls_probe_success{service="stream-monitoring"}) == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen HLS stream is not being served
+            description: For three minutes the master playlist, a media playlist or a newest segment at {{ .Values.hlsProbe.url }} has not answered 200.
+
+        - alert: FrikanalenHlsStalled
+          expr: min(changes(frikanalen_hls_media_sequence{service="stream-monitoring"}[2m])) == 0 and max(frikanalen_hls_probe_success{service="stream-monitoring"}) == 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: A Frikanalen HLS rendition has stopped advancing
+            description: At least one media playlist at {{ .Values.hlsProbe.url }} has kept the same media sequence for three minutes.
+
+        - alert: FrikanalenHlsRenditionsOutOfSync
+          expr: max(frikanalen_hls_rendition_skew_seconds{service="stream-monitoring"}) > {{ .Values.hlsProbe.maxSkewSeconds }}
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Frikanalen HLS renditions are out of sync
+            description: The newest segments of the HLS renditions at {{ .Values.hlsProbe.url }} end more than {{ .Values.hlsProbe.maxSkewSeconds }} seconds apart by program date time, so players cannot line audio up with video. The packager's liveness probe should restart FFmpeg; if this persists, restart the ffmpeg-transcoder container.
+
+        - alert: FrikanalenHlsOffClock
+          expr: max(abs(frikanalen_hls_lag_seconds{service="stream-monitoring"})) > {{ .Values.hlsProbe.maxLagSeconds }}
+          for: 3m
+          labels:
+            severity: warning
+          annotations:
+            summary: Frikanalen HLS program date times are off the clock
+            description: A rendition at {{ .Values.hlsProbe.url }} ends more than {{ .Values.hlsProbe.maxLagSeconds }} seconds away from the wall clock by program date time. Players that seek to live by program date time will misbehave.
+    {{- end }}
+    {{- if .Values.packagerAlerts.enabled }}
+
+    - name: frikanalen-stream-packager
+      rules:
+        - alert: FrikanalenPackagerRestarting
+          expr: sum(increase(kube_pod_container_status_restarts_total{namespace="{{ .Values.packagerAlerts.namespace }}",pod=~"{{ .Values.packagerAlerts.podRegex }}"}[30m])) >= 2
+          labels:
+            severity: warning
+          annotations:
+            summary: The live stream packager keeps restarting
+            description: Containers in the live stream packager pods have restarted at least twice in 30 minutes. Each restart interrupts the HLS stream; look at the ffmpeg-transcoder log for corrupt input or timestamp discontinuities and at CPU contention on its node.
+
+        - alert: FrikanalenPackagerNotReady
+          expr: sum(kube_pod_status_ready{namespace="{{ .Values.packagerAlerts.namespace }}",pod=~"{{ .Values.packagerAlerts.podRegex }}",condition="true"}) < count(kube_pod_status_ready{namespace="{{ .Values.packagerAlerts.namespace }}",pod=~"{{ .Values.packagerAlerts.podRegex }}",condition="true"})
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: A live stream packager pod is not ready
+            description: The packager origin or Cubemap pod has been not ready for five minutes. For Cubemap this usually means no UDP is arriving from playout.
+
+        - alert: FrikanalenPackagerCPUThrottled
+          expr: >-
+            sum by (pod, container) (rate(container_cpu_cfs_throttled_periods_total{namespace="{{ .Values.packagerAlerts.namespace }}",pod=~"{{ .Values.packagerAlerts.podRegex }}",container!=""}[5m]))
+            / sum by (pod, container) (rate(container_cpu_cfs_periods_total{namespace="{{ .Values.packagerAlerts.namespace }}",pod=~"{{ .Values.packagerAlerts.podRegex }}",container!=""}[5m])) > 0.25
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: The live stream packager is hitting its CPU limit
+            description: A packager container has been throttled in more than a quarter of CPU periods for 15 minutes. A real-time encode that cannot keep up drifts out of sync; raise its CPU limit.
+    {{- end }}
