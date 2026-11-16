@@ -29,14 +29,16 @@ data:
         freeze_duration=0
         analysis_up=0
 
-        if [ -f "$state_dir/silence-start" ]; then
+        # The analyzer loop removes these files at any moment, so a file can
+        # vanish between a test and a read. Read once and tolerate a miss:
+        # under `set -e` a failed cat used to kill this loop for good, and the
+        # web server then served the last metrics forever.
+        if silence_start=$(cat "$state_dir/silence-start" 2>/dev/null) && [ -n "$silence_start" ]; then
           silence=1
-          silence_start=$(cat "$state_dir/silence-start")
           silence_duration=$((now - silence_start))
         fi
-        if [ -f "$state_dir/freeze-start" ]; then
+        if freeze_start=$(cat "$state_dir/freeze-start" 2>/dev/null) && [ -n "$freeze_start" ]; then
           freeze=1
-          freeze_start=$(cat "$state_dir/freeze-start")
           freeze_duration=$((now - freeze_start))
         fi
         if [ -f "$state_dir/analysis-up" ]; then
@@ -60,6 +62,9 @@ data:
           echo '# HELP frikanalen_stream_freeze_duration_seconds Current continuous frozen-video duration.'
           echo '# TYPE frikanalen_stream_freeze_duration_seconds gauge'
           echo "frikanalen_stream_freeze_duration_seconds $freeze_duration"
+          echo '# HELP frikanalen_content_analysis_timestamp_seconds When these content metrics were written.'
+          echo '# TYPE frikanalen_content_analysis_timestamp_seconds gauge'
+          echo "frikanalen_content_analysis_timestamp_seconds $now"
         } > "$metrics_file"
         # The .txt extension makes Python's static server send text/plain,
         # which Prometheus 3 accepts without a fallback scrape protocol.
@@ -75,7 +80,10 @@ data:
       rm -f "$state_dir/silence-start" "$state_dir/freeze-start"
       touch "$state_dir/analysis-up"
 
+      # -rw_timeout makes a stalled HTTP input end FFmpeg (and restart this
+      # loop) instead of hanging with stale silence/freeze state.
       ffmpeg -nostdin -hide_banner -loglevel info \
+        -rw_timeout 15000000 \
         -i "$STREAM_URL" \
         -filter_complex "[0:v:0]fps=2,scale=320:-2,freezedetect=n=$FREEZE_NOISE:d=$DETECTION_SECONDS[video];[0:a:0]silencedetect=n=$SILENCE_NOISE:d=$DETECTION_SECONDS[audio]" \
         -map '[video]' -map '[audio]' -f null - 2>&1 | while IFS= read -r line; do
