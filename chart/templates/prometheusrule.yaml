@@ -46,6 +46,15 @@ spec:
             summary: Frikanalen audio has stopped advancing
             description: Fewer than one decoded audio frame per second has been observed for more than two minutes.
 
+        - alert: FrikanalenContentAnalysisStale
+          expr: time() - frikanalen_content_analysis_timestamp_seconds{service="stream-monitoring"} > 60 or absent(frikanalen_content_analysis_timestamp_seconds{service="stream-monitoring"})
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: Frikanalen content analysis has stopped updating
+            description: The silence/freeze metrics have not been rewritten for over a minute, so FrikanalenStreamSilent and FrikanalenStreamFrozen are blind. Restart the stream-monitoring pod.
+
         - alert: FrikanalenStreamSilent
           expr: frikanalen_stream_silence_duration_seconds{service="stream-monitoring"} >= {{ .Values.contentAnalysis.silenceAlertSeconds }}
           # The expression already waits for the threshold, but short freezes and

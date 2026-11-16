@@ -85,6 +85,18 @@ spec:
               value: {{ .Values.contentAnalysis.silenceNoise | quote }}
             - name: FREEZE_NOISE
               value: {{ .Values.contentAnalysis.freezeNoise | quote }}
+          # analyze.sh rewrites metrics.txt every second. If that writer dies
+          # (or the script wedges), the web server keeps serving the last
+          # values, so restart this container when the file goes stale.
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - test $(( $(date +%s) - $(stat -c %Y /tmp/www/metrics.txt) )) -lt 30
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 2
           resources:
             {{- toYaml .Values.contentAnalysis.resources | nindent 12 }}
           securityContext:
