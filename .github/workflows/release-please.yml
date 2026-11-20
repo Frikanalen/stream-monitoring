@@ -1,0 +1,21 @@
+name: Release Please
+on:
+  push:
+    branches: [main]
+# release-please keeps a release pull request open on main. Merging it bumps
+# chart/Chart.yaml and tags vX.Y.Z, which is what Frikanalen/clusters pins
+# prod's stream-monitoring and multicast-monitoring to.
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          # No release-type here: passing one puts the action in
+          # single-package mode, which ignores release-please-config.json and
+          # would not bump chart/Chart.yaml.
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
