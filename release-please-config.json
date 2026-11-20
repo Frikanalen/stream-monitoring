@@ -1,0 +1,22 @@
+{
+  "packages": {
+    ".": {
+      "changelog-path": "CHANGELOG.md",
+      "release-type": "simple",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": false,
+      "include-v-in-tag": true,
+      "include-component-in-tag": false,
+      "draft": false,
+      "prerelease": false,
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "chart/Chart.yaml"
+        }
+      ]
+    }
+  },
+  "last-release-sha": "3f8475d1cee654fe3a35ccdcf4f726a865301534",
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
+}

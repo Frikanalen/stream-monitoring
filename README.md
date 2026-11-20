@@ -39,3 +39,9 @@ dashboard query), a `stream.title` for the alert summaries, and its own
 `dashboard.uid`. A multicast source needs `hostNetwork: true`, since the pod
 network does not carry multicast; the metrics ports then bind on the node, so
 move them off 9090-9092 with `ports.*`.
+
+## Releases
+
+release-please keeps a release pull request open on `main`, built from
+Conventional Commit messages. Merging it bumps `chart/Chart.yaml` and tags
+`vX.Y.Z`; Frikanalen/clusters pins prod to that tag.
