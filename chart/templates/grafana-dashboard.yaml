@@ -42,7 +42,7 @@ data:
           "id": 1,
           "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
           "pluginVersion": "13.0.0",
-          "targets": [{"expr": "min(up{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "min(up{service=\"{{ include "stream-monitoring.name" . }}\"})", "instant": true, "refId": "A"}],
           "title": "Monitoring",
           "type": "stat"
         },
@@ -60,7 +60,7 @@ data:
           "id": 2,
           "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
           "pluginVersion": "13.0.0",
-          "targets": [{"expr": "max(ffmpeg_stream_connection_state{service=\"stream-monitoring\",stream_type=\"mpegts\"})", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "max(ffmpeg_stream_connection_state{service=\"{{ include "stream-monitoring.name" . }}\",stream_type=\"mpegts\"})", "instant": true, "refId": "A"}],
           "title": "Stream Connection",
           "type": "stat"
         },
@@ -78,7 +78,7 @@ data:
           "id": 3,
           "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
           "pluginVersion": "13.0.0",
-          "targets": [{"expr": "max(frikanalen_stream_silence{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "max(frikanalen_stream_silence{service=\"{{ include "stream-monitoring.name" . }}\"})", "instant": true, "refId": "A"}],
           "title": "Audio Content",
           "type": "stat"
         },
@@ -96,7 +96,7 @@ data:
           "id": 4,
           "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
           "pluginVersion": "13.0.0",
-          "targets": [{"expr": "max(frikanalen_stream_frozen{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "max(frikanalen_stream_frozen{service=\"{{ include "stream-monitoring.name" . }}\"})", "instant": true, "refId": "A"}],
           "title": "Video Content",
           "type": "stat"
         },
@@ -107,7 +107,7 @@ data:
           "id": 5,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
           "pluginVersion": "13.0.0",
-          "targets": [{"expr": "max(frikanalen_stream_silence_duration_seconds{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "max(frikanalen_stream_silence_duration_seconds{service=\"{{ include "stream-monitoring.name" . }}\"})", "instant": true, "refId": "A"}],
           "title": "Current Silence",
           "type": "stat"
         },
@@ -118,7 +118,7 @@ data:
           "id": 6,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
           "pluginVersion": "13.0.0",
-          "targets": [{"expr": "max(frikanalen_stream_freeze_duration_seconds{service=\"stream-monitoring\"})", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "max(frikanalen_stream_freeze_duration_seconds{service=\"{{ include "stream-monitoring.name" . }}\"})", "instant": true, "refId": "A"}],
           "title": "Current Freeze",
           "type": "stat"
         },
@@ -130,9 +130,9 @@ data:
           "options": {"legend": {"calcs": ["lastNotNull", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
           "pluginVersion": "13.0.0",
           "targets": [
-            {"expr": "sum(rate(ffmpeg_frames{service=\"stream-monitoring\",type=\"processed\",media_type=\"video\"}[1m]))", "legendFormat": "Video frames/s", "refId": "A"},
-            {"expr": "sum(rate(ffmpeg_frames{service=\"stream-monitoring\",type=\"processed\",media_type=\"audio\"}[1m]))", "legendFormat": "Audio frames/s", "refId": "B"},
-            {"expr": "max(ffmpeg_fps{service=\"stream-monitoring\",media_type=\"video\"})", "legendFormat": "Reported video FPS", "refId": "C"}
+            {"expr": "sum(rate(ffmpeg_frames{service=\"{{ include "stream-monitoring.name" . }}\",type=\"processed\",media_type=\"video\"}[1m]))", "legendFormat": "Video frames/s", "refId": "A"},
+            {"expr": "sum(rate(ffmpeg_frames{service=\"{{ include "stream-monitoring.name" . }}\",type=\"processed\",media_type=\"audio\"}[1m]))", "legendFormat": "Audio frames/s", "refId": "B"},
+            {"expr": "max(ffmpeg_fps{service=\"{{ include "stream-monitoring.name" . }}\",media_type=\"video\"})", "legendFormat": "Reported video FPS", "refId": "C"}
           ],
           "title": "Decoded Media Progress",
           "type": "timeseries"
@@ -145,9 +145,9 @@ data:
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
           "pluginVersion": "13.0.0",
           "targets": [
-            {"expr": "sum(rate(ffmpeg_codec_errors_total{service=\"stream-monitoring\"}[5m]))", "legendFormat": "Codec errors/s", "refId": "A"},
-            {"expr": "sum(rate(ffmpeg_packet_corrupt_total{service=\"stream-monitoring\"}[5m]))", "legendFormat": "Corrupt packets/s", "refId": "B"},
-            {"expr": "sum(rate(ffmpeg_stream_connection_reset_total{service=\"stream-monitoring\"}[5m]))", "legendFormat": "Reconnects/s", "refId": "C"}
+            {"expr": "sum(rate(ffmpeg_codec_errors_total{service=\"{{ include "stream-monitoring.name" . }}\"}[5m]))", "legendFormat": "Codec errors/s", "refId": "A"},
+            {"expr": "sum(rate(ffmpeg_packet_corrupt_total{service=\"{{ include "stream-monitoring.name" . }}\"}[5m]))", "legendFormat": "Corrupt packets/s", "refId": "B"},
+            {"expr": "sum(rate(ffmpeg_stream_connection_reset_total{service=\"{{ include "stream-monitoring.name" . }}\"}[5m]))", "legendFormat": "Reconnects/s", "refId": "C"}
           ],
           "title": "Media Errors and Reconnects",
           "type": "timeseries"
@@ -160,8 +160,8 @@ data:
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
           "pluginVersion": "13.0.0",
           "targets": [
-            {"expr": "max(frikanalen_stream_silence_duration_seconds{service=\"stream-monitoring\"})", "legendFormat": "Silence duration", "refId": "A"},
-            {"expr": "max(frikanalen_stream_freeze_duration_seconds{service=\"stream-monitoring\"})", "legendFormat": "Freeze duration", "refId": "B"}
+            {"expr": "max(frikanalen_stream_silence_duration_seconds{service=\"{{ include "stream-monitoring.name" . }}\"})", "legendFormat": "Silence duration", "refId": "A"},
+            {"expr": "max(frikanalen_stream_freeze_duration_seconds{service=\"{{ include "stream-monitoring.name" . }}\"})", "legendFormat": "Freeze duration", "refId": "B"}
           ],
           "title": "Content Anomaly Duration",
           "type": "timeseries"
@@ -187,7 +187,7 @@ data:
           "id": 11,
           "options": {"displayMode": "gradient", "maxVizHeight": 300, "minVizHeight": 16, "minVizWidth": 8, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
           "pluginVersion": "13.0.0",
-          "targets": [{"expr": "max by (alertname) (ALERTS{alertname=~\"FrikanalenStream.*\",alertstate=\"firing\"}) or on() vector(0)", "legendFormat": "Active Frikanalen alerts", "refId": "A"}],
+          "targets": [{"expr": "max by (alertname) (ALERTS{alertname=~\"FrikanalenStream.*\",alertstate=\"firing\",stream=\"{{ .Values.stream.title }}\"}) or on() vector(0)", "legendFormat": "Active Frikanalen alerts", "refId": "A"}],
           "title": "Alert State",
           "type": "bargauge"
         }
@@ -210,7 +210,7 @@ data:
       "time": {"from": "now-6h", "to": "now"},
       "timepicker": {"refresh_intervals": ["5s", "10s", "15s", "30s", "1m", "5m"]},
       "timezone": "browser",
-      "title": "Frikanalen / Production Stream",
-      "uid": "frikanalen-production-stream",
+      "title": {{ .Values.dashboard.title | quote }},
+      "uid": {{ .Values.dashboard.uid | quote }},
       "version": 1
     }

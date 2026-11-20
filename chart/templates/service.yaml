@@ -10,17 +10,17 @@ spec:
   ports:
     {{- if .Values.tsMonitor.enabled }}
     - name: metrics
-      port: 9090
+      port: {{ .Values.ports.metrics }}
       targetPort: metrics
       protocol: TCP
     - name: content-metrics
-      port: 9091
+      port: {{ .Values.ports.contentMetrics }}
       targetPort: content-metrics
       protocol: TCP
     {{- end }}
     {{- if .Values.hlsProbe.enabled }}
     - name: hls-metrics
-      port: 9092
+      port: {{ .Values.ports.hlsMetrics }}
       targetPort: hls-metrics
       protocol: TCP
     {{- end }}

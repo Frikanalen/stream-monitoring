@@ -20,6 +20,13 @@ spec:
         {{- include "stream-monitoring.labels" . | nindent 8 }}
     spec:
       automountServiceAccountToken: false
+      {{- if .Values.hostNetwork }}
+      # Multicast does not cross the pod network, so a multicast stream is
+      # joined from the node itself. The metrics ports below then bind on the
+      # node, which is why they are configurable.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -37,7 +44,7 @@ spec:
             - --input
             - {{ .Values.stream.url | quote }}
             - --metrics-port
-            - "9090"
+            - {{ .Values.ports.metrics | quote }}
             - --probe-size
             - {{ .Values.stream.probeSize | quote }}
             - --analyze-duration
@@ -47,7 +54,7 @@ spec:
               value: info
           ports:
             - name: metrics
-              containerPort: 9090
+              containerPort: {{ .Values.ports.metrics }}
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -119,12 +126,12 @@ spec:
             - python
             - -m
             - http.server
-            - "9091"
+            - {{ .Values.ports.contentMetrics | quote }}
             - --directory
             - /tmp/www
           ports:
             - name: content-metrics
-              containerPort: 9091
+              containerPort: {{ .Values.ports.contentMetrics }}
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -169,10 +176,10 @@ spec:
             - name: TIMEOUT_SECONDS
               value: {{ .Values.hlsProbe.timeoutSeconds | quote }}
             - name: METRICS_PORT
-              value: "9092"
+              value: {{ .Values.ports.hlsMetrics | quote }}
           ports:
             - name: hls-metrics
-              containerPort: 9092
+              containerPort: {{ .Values.ports.hlsMetrics }}
               protocol: TCP
           readinessProbe:
             httpGet:

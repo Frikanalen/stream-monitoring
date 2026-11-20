@@ -5,12 +5,33 @@ image:
   tag: latest@sha256:9b1ea2d12c49f3642b46394f8068586c7ca9b4c70ed4deace034498cab711d82
   pullPolicy: IfNotPresent
 
+# Names every object and keys every alert and dashboard query. Set it on a
+# second release that watches another stream, e.g. caspar1's multicast.
+nameOverride: ""
+
+# Join the stream from the node's network instead of the pod's. Needed for a
+# multicast source, which the pod network does not carry. The metrics ports
+# below then bind on the node, so pick ones nothing else there uses.
+hostNetwork: false
+
+ports:
+  metrics: 9090
+  contentMetrics: 9091
+  hlsMetrics: 9092
+
+dashboard:
+  title: Frikanalen / Production Stream
+  uid: frikanalen-production-stream
+
 # The outgoing MPEG-TS: structure (ffmpeg_exporter) and content (black,
 # frozen, silent). Off where there is no TS to watch, e.g. staging.
 tsMonitor:
   enabled: true
 
 stream:
+  # Starts each MPEG-TS alert's summary ("<title> stream is silent") and is
+  # set as its stream label.
+  title: Frikanalen
   url: http://simula.frikanalen.tv:9094/frikanalen.ts
   # Strings prevent YAML/Helm from rendering these CLI arguments in scientific notation.
   probeSize: "5000000"
