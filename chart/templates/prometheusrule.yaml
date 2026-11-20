@@ -11,81 +11,89 @@ spec:
     - name: frikanalen-stream
       rules:
         - alert: FrikanalenStreamExporterDown
-          expr: up{service="stream-monitoring"} == 0
+          expr: up{service="{{ include "stream-monitoring.name" . }}"} == 0
           for: 2m
           labels:
             severity: critical
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen stream monitor is unreachable
+            summary: {{ .Values.stream.title }} stream monitor is unreachable
             description: Prometheus has been unable to scrape the FFmpeg exporter for more than two minutes.
 
         - alert: FrikanalenStreamDisconnected
-          expr: ffmpeg_stream_connection_state{service="stream-monitoring",stream_type="mpegts"} == 0
+          expr: ffmpeg_stream_connection_state{service="{{ include "stream-monitoring.name" . }}",stream_type="mpegts"} == 0
           for: 1m
           labels:
             severity: critical
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen MPEG-TS stream is disconnected
-            description: FFprobe has reported the production stream disconnected for more than one minute.
+            summary: {{ .Values.stream.title }} MPEG-TS stream is disconnected
+            description: FFprobe has reported {{ .Values.stream.url }} disconnected for more than one minute.
 
         - alert: FrikanalenStreamVideoStalled
-          expr: sum(rate(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="video"}[2m])) < 1 or absent(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="video"})
+          expr: sum(rate(ffmpeg_frames{service="{{ include "stream-monitoring.name" . }}",type="processed",media_type="video"}[2m])) < 1 or absent(ffmpeg_frames{service="{{ include "stream-monitoring.name" . }}",type="processed",media_type="video"})
           for: 2m
           labels:
             severity: critical
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen video has stopped advancing
+            summary: {{ .Values.stream.title }} video has stopped advancing
             description: Fewer than one decoded video frame per second has been observed for more than two minutes.
 
         - alert: FrikanalenStreamAudioStalled
-          expr: sum(rate(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="audio"}[2m])) < 1 or absent(ffmpeg_frames{service="stream-monitoring",type="processed",media_type="audio"})
+          expr: sum(rate(ffmpeg_frames{service="{{ include "stream-monitoring.name" . }}",type="processed",media_type="audio"}[2m])) < 1 or absent(ffmpeg_frames{service="{{ include "stream-monitoring.name" . }}",type="processed",media_type="audio"})
           for: 2m
           labels:
             severity: critical
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen audio has stopped advancing
+            summary: {{ .Values.stream.title }} audio has stopped advancing
             description: Fewer than one decoded audio frame per second has been observed for more than two minutes.
 
         - alert: FrikanalenContentAnalysisStale
-          expr: time() - frikanalen_content_analysis_timestamp_seconds{service="stream-monitoring"} > 60 or absent(frikanalen_content_analysis_timestamp_seconds{service="stream-monitoring"})
+          expr: time() - frikanalen_content_analysis_timestamp_seconds{service="{{ include "stream-monitoring.name" . }}"} > 60 or absent(frikanalen_content_analysis_timestamp_seconds{service="{{ include "stream-monitoring.name" . }}"})
           for: 2m
           labels:
             severity: warning
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen content analysis has stopped updating
+            summary: {{ .Values.stream.title }} content analysis has stopped updating
             description: The silence/freeze metrics have not been rewritten for over a minute, so FrikanalenStreamSilent and FrikanalenStreamFrozen are blind. Restart the stream-monitoring pod.
 
         - alert: FrikanalenStreamSilent
-          expr: frikanalen_stream_silence_duration_seconds{service="stream-monitoring"} >= {{ .Values.contentAnalysis.silenceAlertSeconds }}
+          expr: frikanalen_stream_silence_duration_seconds{service="{{ include "stream-monitoring.name" . }}"} >= {{ .Values.contentAnalysis.silenceAlertSeconds }}
           # The expression already waits for the threshold, but short freezes and
           # silences keep crossing it, so without a for: static graphics or a
           # quiet programme flap and page every minute.
           for: 2m
           labels:
             severity: critical
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen stream is silent
+            summary: {{ .Values.stream.title }} stream is silent
             description: No audio above {{ .Values.contentAnalysis.silenceNoise }} has been detected for at least {{ .Values.contentAnalysis.silenceAlertSeconds }} seconds.
 
         - alert: FrikanalenStreamFrozen
-          expr: frikanalen_stream_freeze_duration_seconds{service="stream-monitoring"} >= {{ .Values.contentAnalysis.freezeAlertSeconds }}
+          expr: frikanalen_stream_freeze_duration_seconds{service="{{ include "stream-monitoring.name" . }}"} >= {{ .Values.contentAnalysis.freezeAlertSeconds }}
           # The expression already waits for the threshold, but short freezes and
           # silences keep crossing it, so without a for: static graphics or a
           # quiet programme flap and page every minute.
           for: 2m
           labels:
             severity: critical
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen video is frozen
+            summary: {{ .Values.stream.title }} video is frozen
             description: No significant image motion above {{ .Values.contentAnalysis.freezeNoise }} has been detected for at least {{ .Values.contentAnalysis.freezeAlertSeconds }} seconds.
 
         - alert: FrikanalenStreamCodecErrors
-          expr: sum(rate(ffmpeg_codec_errors_total{service="stream-monitoring"}[5m])) > 1
+          expr: sum(rate(ffmpeg_codec_errors_total{service="{{ include "stream-monitoring.name" . }}"}[5m])) > 1
           for: 5m
           labels:
             severity: warning
+            stream: {{ .Values.stream.title | quote }}
           annotations:
-            summary: Frikanalen stream has sustained codec errors
+            summary: {{ .Values.stream.title }} stream has sustained codec errors
             description: FFprobe has observed more than one codec error per second for five minutes.
     {{- end }}
     {{- if .Values.hlsProbe.enabled }}
@@ -93,7 +101,7 @@ spec:
     - name: frikanalen-hls
       rules:
         - alert: FrikanalenHlsProbeDown
-          expr: up{service="stream-monitoring",endpoint="hls-metrics"} == 0 or absent(frikanalen_hls_probe_timestamp_seconds{service="stream-monitoring"})
+          expr: up{service="{{ include "stream-monitoring.name" . }}",endpoint="hls-metrics"} == 0 or absent(frikanalen_hls_probe_timestamp_seconds{service="{{ include "stream-monitoring.name" . }}"})
           for: 5m
           labels:
             severity: warning
@@ -102,7 +110,7 @@ spec:
             description: Prometheus has had no metrics from the HLS probe for five minutes, so the HLS alerts below cannot fire.
 
         - alert: FrikanalenHlsUnavailable
-          expr: max(frikanalen_hls_probe_success{service="stream-monitoring"}) == 0
+          expr: max(frikanalen_hls_probe_success{service="{{ include "stream-monitoring.name" . }}"}) == 0
           for: 3m
           labels:
             severity: critical
@@ -115,7 +123,7 @@ spec:
           # sequence only moves once the playlist window is full and segments
           # start dropping off, so for the first listSize segments after a
           # packager restart (five minutes) it stands still on a healthy stream.
-          expr: min(changes(frikanalen_hls_end_timestamp_seconds{service="stream-monitoring"}[2m])) == 0 and max(frikanalen_hls_probe_success{service="stream-monitoring"}) == 1
+          expr: min(changes(frikanalen_hls_end_timestamp_seconds{service="{{ include "stream-monitoring.name" . }}"}[2m])) == 0 and max(frikanalen_hls_probe_success{service="{{ include "stream-monitoring.name" . }}"}) == 1
           for: 1m
           labels:
             severity: critical
@@ -124,7 +132,7 @@ spec:
             description: The newest segment of at least one media playlist at {{ .Values.hlsProbe.url }} has not changed for three minutes.
 
         - alert: FrikanalenHlsRenditionsOutOfSync
-          expr: max(frikanalen_hls_rendition_skew_seconds{service="stream-monitoring"}) > {{ .Values.hlsProbe.maxSkewSeconds }}
+          expr: max(frikanalen_hls_rendition_skew_seconds{service="{{ include "stream-monitoring.name" . }}"}) > {{ .Values.hlsProbe.maxSkewSeconds }}
           for: 2m
           labels:
             severity: critical
@@ -133,7 +141,7 @@ spec:
             description: The newest segments of the HLS renditions at {{ .Values.hlsProbe.url }} end more than {{ .Values.hlsProbe.maxSkewSeconds }} seconds apart by program date time, so players cannot line audio up with video. The packager's liveness probe should restart FFmpeg; if this persists, restart the ffmpeg-transcoder container.
 
         - alert: FrikanalenHlsOffClock
-          expr: max(abs(frikanalen_hls_lag_seconds{service="stream-monitoring"})) > {{ .Values.hlsProbe.maxLagSeconds }}
+          expr: max(abs(frikanalen_hls_lag_seconds{service="{{ include "stream-monitoring.name" . }}"})) > {{ .Values.hlsProbe.maxLagSeconds }}
           for: 3m
           labels:
             severity: warning

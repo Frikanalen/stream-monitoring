@@ -22,5 +22,11 @@ jobs:
           helm template stream-monitoring chart
           --set tsMonitor.enabled=false --set hlsProbe.enabled=true --set packagerAlerts.enabled=true
           | grep -q 'name: hls-probe'
+      - name: Render a second, multicast release
+        run: >-
+          helm template multicast chart
+          --set nameOverride=multicast-monitoring --set hostNetwork=true
+          --set stream.url=udp://239.1.1.51:5004 --set ports.metrics=9190
+          | grep -q 'service="multicast-monitoring"'
       - name: Check HLS probe script
         run: python3 -m py_compile chart/files/hls_probe.py

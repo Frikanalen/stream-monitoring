@@ -29,3 +29,13 @@ one after another, a skew of one segment (2 s) is normal.
 `packagerAlerts.enabled` adds alerts on the packager's own pods (restarts,
 not ready, CPU throttling), and `tsMonitor.enabled: false` turns off the
 MPEG-TS monitoring where there is no TS to watch, as on staging.
+
+## Watching a second stream
+
+One release watches one MPEG-TS source. To watch another, such as caspar1's
+multicast program out before it reaches the packager, install the chart a
+second time with its own `nameOverride` (which keys every object, alert and
+dashboard query), a `stream.title` for the alert summaries, and its own
+`dashboard.uid`. A multicast source needs `hostNetwork: true`, since the pod
+network does not carry multicast; the metrics ports then bind on the node, so
+move them off 9090-9092 with `ports.*`.
